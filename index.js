@@ -18,6 +18,14 @@ async function runApp() {
   // Enable the required domains
   await Promise.all([Page.enable(), Network.enable()]);
 
+  // Listen to the FrameNavigated event
+  let mainFrameRequestId;
+  Page.frameNavigated(async ({ frame }) => {
+    if (!frame.parentId) {
+      mainFrameRequestId = frame.loaderId;
+    }
+  });
+
   // Open a new tab and navigate to the specified URL
   await Page.navigate({ url: "https://example.com" });
 
@@ -25,21 +33,13 @@ async function runApp() {
   Page.loadEventFired(async () => {
     console.log("Page loaded successfully.");
 
-    // Find the main request ID
-    const mainRequestId = (await Network.getNavigationHistory()).entries.slice(
-      -1
-    )[0].requestId;
-
-    // Get the response body as a stream
-    const { stream } = await Network.takeResponseBodyAsStream({
-      requestId: mainRequestId,
+    // Get the response body using the getResponseBody method
+    const { body } = await Network.getResponseBody({
+      requestId: mainFrameRequestId,
     });
 
-    // Read the content from the stream
-    const responseBody = await client.readFromStream(stream);
-
     console.log("HTML Content:");
-    console.log(responseBody);
+    console.log(body);
 
     // Close the client and the Chrome instance
     await client.close();
